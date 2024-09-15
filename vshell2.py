@@ -109,6 +109,8 @@ class VShell:
                     self.print_working_directory()
                 elif command.split()[0] == "ls":
                     self.list_files(command)
+                elif command.split()[0] == "cat":
+                    self.read_file(command)
                 elif command.split()[0] == "rmdir":
                     self.remove_directory(command)
                 elif command.split()[0] == "head":
@@ -199,6 +201,39 @@ class VShell:
             for elem in files_set:
                 if elem != '':
                     print(elem)
+
+    def read_file(self, command):
+        """
+        Читает содержимое указанного файла в виртуальной файловой системе.
+
+        - Путь к файлу может быть абсолютным (начинается с '/') или относительным.
+        - Если указанный файл существует, его содержимое будет выведено на экран.
+        - Если файл не существует, будет выведено сообщение об ошибке.
+
+        :param command: Строка команды, которая содержит имя файла для чтения.
+        """
+        file_path = normal_split(command)
+
+        if file_path == '0':
+            print("Error: incorrect input")
+            return
+
+        if file_path[0] != '/':
+            if self.current_directory != '/':
+                file_path = f'{self.current_directory}/{file_path}'
+            else:
+                file_path = f'/{file_path}'
+
+        # Проверка, существует ли указанный файл в списке файлов и директорий self.namelist
+        if file_path[1:] in self.namelist:
+            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
+                with zipSystem.open(file_path[1:], "r") as file:
+                    read_file = file.read()
+            print(read_file.decode('UTF-8'))
+
+            return
+
+        print("Error: unknown file")
 
     def remove_directory(self, command):
         """
