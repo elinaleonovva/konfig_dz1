@@ -89,8 +89,8 @@ class VShell:
                     - "cd": Перемещение между директориями в виртуальной файловой системе.
                     - "pwd": Вывод текущей рабочей директории.
                     - "ls": Вывод списка файлов и директорий в текущей директории.
-                    - "cat": Вывод содержимого файла.
-                    - "--script": Запуск команд из скрипта (необходимо передать путь к скрипту вместе с командой).
+                    - "rmdir":  Удаление пустых директорий (папок).
+                    - "head": Вывод первых 10-ти строк содержимого файла.
 
                 - Для завершения работы пользователь может ввести команду "exit".
                 - Если введена пустая команда, будет вызвано исключение "No command".
@@ -109,8 +109,6 @@ class VShell:
                     self.print_working_directory()
                 elif command.split()[0] == "ls":
                     self.list_files(command)
-                elif command.split()[0] == "cat":
-                    self.read_file(command)
                 elif command.split()[0] == "rmdir":
                     self.remove_directory(command)
                 elif command.split()[0] == "head":
@@ -202,39 +200,6 @@ class VShell:
                 if elem != '':
                     print(elem)
 
-    def read_file(self, command):
-        """
-        Читает содержимое указанного файла в виртуальной файловой системе.
-
-        - Путь к файлу может быть абсолютным (начинается с '/') или относительным.
-        - Если указанный файл существует, его содержимое будет выведено на экран.
-        - Если файл не существует, будет выведено сообщение об ошибке.
-
-        :param command: Строка команды, которая содержит имя файла для чтения.
-        """
-        file_path = normal_split(command)
-
-        if file_path == '0':
-            print("Error: incorrect input")
-            return
-
-        if file_path[0] != '/':
-            if self.current_directory != '/':
-                file_path = f'{self.current_directory}/{file_path}'
-            else:
-                file_path = f'/{file_path}'
-
-        # Проверка, существует ли указанный файл в списке файлов и директорий self.namelist
-        if file_path[1:] in self.namelist:
-            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
-                with zipSystem.open(file_path[1:], "r") as file:
-                    read_file = file.read()
-            print(read_file.decode('UTF-8'))
-
-            return
-
-        print("Error: unknown file")
-
     def remove_directory(self, command):
         """
         Удаляет директорию из виртуальной файловой системы.
@@ -285,18 +250,32 @@ class VShell:
         else:
             print(f"Error: File {file_path} does not exist")
 
-
-def test_ls(vshell):
-    vshell.list_files("")
-
-
 def test_cd(vshell):
+    #CD LS
     print("Current working directory: ")
     vshell.list_files("ls")
     print("Change working directory: ")
-    vshell.list_files("ls")
-    vshell.head("head test_filesystem/folder/text2.txt")
 
+    vshell.change_directory("cd test_filesystem")
+    vshell.list_files("ls")
+
+    vshell.change_directory("cd folder")
+    vshell.list_files("ls")
+
+    vshell.change_directory("cd ..")
+
+    # HEAD
+    vshell.head("head text.txt")
+    vshell.change_directory("cd ..")
+    vshell.head("head test_filesystem/folder/text2.txt")
+    vshell.head("head text3.txt")
+
+    vshell.change_directory("cd test_filesystem")
+
+    # RMDIR
+    vshell.remove_directory("rmdir folder2")
+    vshell.remove_directory("rmdir folder3")
+    vshell.remove_directory("rmdir folder")
 
 if __name__ == "__main__":
     # unittest.main()
