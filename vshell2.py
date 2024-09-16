@@ -190,7 +190,7 @@ class VShell:
         if directory == '/':
             for name in make_set(self.namelist):
                 print(name)
-        #  создаётся множество файлов в указанной директории
+        #  создаётся множество из файлов указанной директории
         else:
             num_of_trans = directory.count('/')
             files_set = {
