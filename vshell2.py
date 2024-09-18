@@ -1,7 +1,7 @@
 import argparse
 import contextlib
 import os
-import zipfile
+import tarfile
 import unittest
 
 
@@ -68,11 +68,11 @@ class VShell:
         получает список файлов и директорий, содержащихся внутри архива, и сохраняет их в self.namelist.
         :param fileSystem: путь к файловой системе в запакованном виде
         """
-        self.fileSystem = fileSystem  # Сохраняет путь к zip-архиву в атрибуте fileSystem
+        self.fileSystem = fileSystem  # Сохраняет путь к tar-архиву в атрибуте fileSystem
         self.current_directory = "/"
         #  Открытие zip-фрхива для чтения
-        with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
-            self.namelist = zipSystem.namelist()  # Получение списка всех файлов и директорий
+        with tarfile.open(self.fileSystem, "r") as tarSystem:
+            self.namelist = tarSystem.getnames()  # Получение списка всех файлов и директорий
         # множество уникальных путей к директориям в корневом уровне архива
         folders_in_main = {
             elem[: elem.find('/') + 1]
@@ -226,10 +226,11 @@ class VShell:
 
         # Проверка, существует ли указанный файл в списке файлов и директорий self.namelist
         if file_path[1:] in self.namelist:
-            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
-                with zipSystem.open(file_path[1:], "r") as file:
+            with tarfile.open(self.fileSystem, "r") as tarSystem:
+                file = tarSystem.extractfile(file_path[1:])
+                if file is not None:
                     read_file = file.read()
-            print(read_file.decode('UTF-8'))
+                    print(read_file.decode('UTF-8'))
 
             return
 
@@ -276,10 +277,11 @@ class VShell:
                 file_path = f'/{file_path}'
         # проверка существует ли файл в списке файлов и директорий в виртуальной файловой системе
         if file_path[1:] in self.namelist:
-            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:  # открывает zip-архив с файловой системой
-                with zipSystem.open(file_path[1:], "r") as file:
+            with tarfile.open(self.fileSystem, "r") as tarSystem:  # открывает tar-архив с файловой системой
+                file = tarSystem.extractfile(file_path[1:])  # открывает файл из архива
+                if file is not None:
                     for i, line in enumerate(file):
-                        if i >= 10:
+                        if i >= 10:  # выводит только первые 10 строк
                             break
                         print(line.decode('UTF-8').strip())
         else:
@@ -314,6 +316,6 @@ def test_cd(vshell):
 
 if __name__ == "__main__":
     # unittest.main()
-    vshell = VShell("test_filesystem.zip")
+    vshell = VShell("test_filesystem.tar")
     # test_cd(vshell)
     vshell.run()
