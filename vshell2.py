@@ -2,6 +2,7 @@ import tkinter as tk
 import zipfile
 import argparse
 import os
+from collections import defaultdict
 
 class VShellGUI:
     def __init__(self, root, fileSystem, username):
@@ -22,6 +23,17 @@ class VShellGUI:
         }
         for elem in folders_in_main:
             self.namelist.append(elem)
+
+        self.namedict = dict()
+        for path in self.namelist:
+            path = path.split('/')
+            root = self.namedict
+            for elem in path:
+                if elem in root:
+                    root = root[elem]
+                else:
+                    root[elem] = dict()
+                    root = root[elem]
 
         # Создание GUI компонентов
         self.command_entry = tk.Entry(self.root, width=50)
@@ -112,15 +124,26 @@ class VShellGUI:
     def list_files(self, command):
         directory = self.current_directory if command.count(' ') == 0 else command.split()[1]
 
-        if directory == '/':
-            for name in self.make_set(self.namelist):
-                self.output_text.insert(tk.END, f"{name}\n")
-        else:
-            num_of_trans = directory.count('/')
-            files_set = {file.split('/')[num_of_trans] for file in self.namelist if directory[1:] in file}
-            for elem in files_set:
-                if elem != '':
-                    self.output_text.insert(tk.END, f"{elem}\n")
+        if self.current_directory == '/':
+            if directory == '/':
+                pass
+            else:
+                if not directory.startswith('/'):
+                    directory = f'/{directory}'
+
+        if directory[0] != '/':
+            directory = f'{self.current_directory}/{directory}'
+
+        path = directory.split('/')[1:] if directory != '/' else []
+        cur_dict = self.namedict
+        try:
+            for item in path:
+                cur_dict = cur_dict[item]
+            ans = list(sorted(cur_dict.keys())[1:]) if self.namedict != cur_dict else list(cur_dict.keys())
+            ans = ' '.join(ans)
+            self.output_text.insert(tk.END, f"{ans}\n")
+        except Exception:
+            self.output_text.insert(tk.END, f"Error: unknown catalog\n")
 
     def remove_directory(self, command):
         directory = command.split(' ', 1)[1] if ' ' in command else command
