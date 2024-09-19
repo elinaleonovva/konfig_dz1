@@ -1,79 +1,20 @@
-import argparse
-import contextlib
-import os
+import tkinter as tk
 import zipfile
-import unittest
+import argparse
+import os
 
-
-def clearing_comm_beg(command):
-    """
-    Удаляет пробельные символы с начала строки команды.
-
-    :param command: Строка команды.
-    :return: Строка команды без пробельных символов в начале.
-    """
-    for i in range(len(command) - 1):
-        if command[i + 1] != ' ':
-            return command[i + 1:]
-
-
-def clearing_comm_end(command):
-    """
-    Удаляет пробельные символы с конца строки команды.
-
-    :param command: Строка команды.
-    :return: Строка команды без пробельных символов с конца.
-    """
-    for i in range(len(command), 1, -1):
-        if command[i - 1] != ' ':
-            return command[:i]
-
-
-def normal_split(line):
-    """
-    Разделяет строки на аргументы команды и возвращает последний аргумент.
-
-    - Функция разделяет строку на аргументы, используя пробел в качестве разделителя.
-    - Если строка не содержит пробелов, функция возвращает строку "0".
-
-    :param line: Строка команды.
-    :return: Последний аргумент команды после разделения по пробелам.
-    """
-    return '0' if (line.count(' ') == 0) else line[line.rfind(' ') + 1:]
-
-
-def make_set(namelist):
-    """
-    Cоздает множество уникальных имен корневых директорий на основе списка имен файлов и директорий.
-
-    Функция анализирует каждое имя в списке и разделяет его на части, используя символ '/' в качестве разделителя.
-    Затем функция формирует множество, содержащее уникальные имена корневых директорий.
-
-    :param namelist: Список имен файлов и директорий в виртуальной файловой системе.
-    :return: Множество уникальных имен корневых директорий.
-    """
-    return {name.split('/')[0] for name in namelist}
-
-
-class VShell:
-    """
-    Класс для работы с виртуальной файловой системой. Эмулирует работу командной строки.
-    """
-
-    def __init__(self, fileSystem):
-        """
-        Метод выполняет инициализацию объекта, который предназначен для работы с виртуальной файловой системой,
-        представленной в виде архива, принимает в качестве аргумента путь к архиву,
-        инициализирует текущую рабочую директорию как корневую,
-        получает список файлов и директорий, содержащихся внутри архива, и сохраняет их в self.namelist.
-        :param fileSystem: путь к файловой системе в запакованном виде
-        """
-        self.fileSystem = fileSystem  # Сохраняет путь к zip-архиву в атрибуте fileSystem
+class VShellGUI:
+    def __init__(self, root, fileSystem, username):
+        self.root = root
+        self.root.title("VShell")
+        self.fileSystem = fileSystem
         self.current_directory = "/"
-        #  Открытие zip-фрхива для чтения
+        self.username = username
+
+        # Открытие zip-архива
         with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
-            self.namelist = zipSystem.namelist()  # Получение списка всех файлов и директорий
-        # множество уникальных путей к директориям в корневом уровне архива
+            self.namelist = zipSystem.namelist()
+
         folders_in_main = {
             elem[: elem.find('/') + 1]
             for elem in self.namelist
@@ -82,57 +23,71 @@ class VShell:
         for elem in folders_in_main:
             self.namelist.append(elem)
 
-    def run(self):
-        """
-                Обрабатывает пользовательские команды для работы с VShell.
-                - Метод обрабатывает следующие типы команд:
-                    - "cd": Перемещение между директориями в виртуальной файловой системе.
-                    - "pwd": Вывод текущей рабочей директории.
-                    - "ls": Вывод списка файлов и директорий в текущей директории.
-                    - "rmdir":  Удаление пустых директорий (папок).
-                    - "head": Вывод первых 10-ти строк содержимого файла.
+        # Создание GUI компонентов
+        self.command_entry = tk.Entry(self.root, width=50)
+        self.command_entry.grid(row=0, column=0, padx=10, pady=10)
+        self.command_entry.bind("<Return>", self.process_command)
 
-                - Для завершения работы пользователь может ввести команду "exit".
-                - Если введена пустая команда, будет вызвано исключение "No command".
-                - Если введена неизвестная команда, будет выведено сообщение "unknown command".
-        """
-        while True:
-            command = input(f"{self.current_directory}$ ").strip()
-            try:
-                if len(command) == 0:
-                    raise Exception("No command")
-                if command == "exit":
-                    break
-                elif command.split()[0] == "cd":
-                    self.change_directory(command)
-                elif command.split()[0] == "pwd":
-                    self.print_working_directory()
-                elif command.split()[0] == "ls":
-                    self.list_files(command)
-                elif command.split()[0] == "cat":
-                    self.read_file(command)
-                elif command.split()[0] == "rmdir":
-                    self.remove_directory(command)
-                elif command.split()[0] == "head":
-                    self.head(command)
-                else:
-                    print(f"{command}: unknown command")
-            except Exception as ex:
-                print(ex)
+        self.output_text = tk.Text(self.root, wrap=tk.WORD, width=80, height=20)
+        self.output_text.grid(row=1, column=0, padx=10, pady=10)
+
+        # Кнопка для запуска тестов
+        self.test_button = tk.Button(self.root, text="Run Tests", command=self.run_tests)
+        self.test_button.grid(row=2, column=0, padx=10, pady=10)
+
+    def process_command(self, event):
+        command = self.command_entry.get().strip()
+        self.output_text.insert(tk.END, f"{self.username}:~{self.current_directory}$ {command}\n")
+
+        if len(command) == 0:
+            self.output_text.insert(tk.END, f"No command\n")
+        elif command == "exit":
+            self.root.quit()
+        elif command.split()[0] == "cd":
+            self.change_directory(command)
+        elif command.split()[0] == "pwd":
+            self.print_working_directory()
+        elif command.split()[0] == "ls":
+            self.list_files(command)
+        elif command.split()[0] == "rmdir":
+            self.remove_directory(command)
+        elif command.split()[0] == "head":
+            self.head(command)
+        else:
+            self.output_text.insert(tk.END, f"{command}: unknown command\n")
+
+        self.command_entry.delete(0, tk.END)
+
+    def run_tests(self):
+        self.output_text.insert(tk.END, "Running tests...\n")
+        self.test_cd()
+
+    def test_cd(self):
+        self.output_text.insert(tk.END, "Current working directory: \n")
+        self.list_files("ls")
+        self.output_text.insert(tk.END, "Change working directory: \n")
+
+        self.change_directory("cd test_filesystem")
+        self.list_files("ls")
+
+        self.change_directory("cd folder")
+        self.list_files("ls")
+
+        self.change_directory("cd ..")
+
+        self.head("head text.txt")
+        self.change_directory("cd ..")
+        self.head("head test_filesystem/folder/text2.txt")
+        self.head("head text3.txt")
+
+        self.change_directory("cd test_filesystem")
+
+        self.remove_directory("rmdir folder2")
+        self.remove_directory("rmdir folder3")
+        self.remove_directory("rmdir folder")
 
     def change_directory(self, command):
-        """
-        Изменяет текущую рабочую директорию в виртуальной файловой системе.
-        - Путь к целевой директории может быть абсолютным (начинается с '/') или относительным.
-        - Если команда содержит "0", то текущая директория будет установлена в корневую директорию ("/").
-        - Если команда содержит "..", текущая директория будет изменена на родительскую директорию (если возможно).
-        - Если команда содержит относительный путь, то он будет преобразован в абсолютный, учитывая текущую директорию.
-        - Если указанный путь существует в файловой системе, текущая директория будет изменена на этот путь.
-        - В случае, если указанный путь не существует, будет выведено сообщение об ошибке.
-        :param command: путь к новой рабочей директории
-        """
-        directory = normal_split(command)
-
+        directory = self.normal_split(command)
         if directory == '0':
             self.current_directory = '/'
             return
@@ -144,176 +99,93 @@ class VShell:
                 self.current_directory = '/'
         else:
             if directory[0] != '/':
-                if self.current_directory != '/':
-                    directory = f'{self.current_directory}/{directory}'
-                else:
-                    directory = f'/{directory}'
+                directory = f'{self.current_directory}/{directory}' if self.current_directory != '/' else f'/{directory}'
 
             if f'{directory[1:]}/' in self.namelist:
                 self.current_directory = directory
-                return
-
-            print("Error: unknown catalog")
+            else:
+                self.output_text.insert(tk.END, f"Error: unknown catalog\n")
 
     def print_working_directory(self):
-        """
-        Выводит путь к рабочей директории в виртуальной файловой системе.
-        """
-        print(self.fileSystem.split('.')[0] + self.current_directory)
+        self.output_text.insert(tk.END, f"{self.fileSystem.split('.')[0]}{self.current_directory}\n")
 
     def list_files(self, command):
-        """
-        Метод list_files выводит список файлов и директорий в указанной или текущей директории
-        в виртуальной файловой системе.
-
-        - Метод выводит список файлов и директорий в указанной или текущей директории в виртуальной файловой системе.
-        - Если команда содержит путь к целевой директории, метод выведет содержимое этой директории.
-        - Если команда не содержит пути, будет выведено содержимое текущей директории.
-        :param command: Путь к директории, содержимое которой нужно вывести. Может быть пустым.
-        """
-        if command.count(' ') > 0:
-            directory = normal_split(command)
-
-            if directory[0] != '/':
-                if self.current_directory != '/':
-                    directory = f'{self.current_directory}/{directory}'  # путь к директории корректируется относительно текущей рабочей директории
-                else:
-                    directory = f'/{directory}'
-
-            if f'{directory[1:]}/' not in self.namelist:
-                print("Error: unknown directory")
-                return
-
-        else:
-            directory = self.current_directory
+        directory = self.current_directory if command.count(' ') == 0 else command.split()[1]
 
         if directory == '/':
-            for name in make_set(self.namelist):
-                print(name)
-        #  создаётся множество из файлов указанной директории
+            for name in self.make_set(self.namelist):
+                self.output_text.insert(tk.END, f"{name}\n")
         else:
             num_of_trans = directory.count('/')
-            files_set = {
-                file.split('/')[num_of_trans]
-                for file in self.namelist
-                if (directory[1:] in file)
-            }
+            files_set = {file.split('/')[num_of_trans] for file in self.namelist if directory[1:] in file}
             for elem in files_set:
                 if elem != '':
-                    print(elem)
-
-    def read_file(self, command):
-        """
-        Читает содержимое указанного файла в виртуальной файловой системе.
-
-        - Путь к файлу может быть абсолютным (начинается с '/') или относительным.
-        - Если указанный файл существует, его содержимое будет выведено на экран.
-        - Если файл не существует, будет выведено сообщение об ошибке.
-
-        :param command: Строка команды, которая содержит имя файла для чтения.
-        """
-        file_path = normal_split(command)
-
-        if file_path == '0':
-            print("Error: incorrect input")
-            return
-
-        if file_path[0] != '/':
-            if self.current_directory != '/':
-                file_path = f'{self.current_directory}/{file_path}'
-            else:
-                file_path = f'/{file_path}'
-
-        # Проверка, существует ли указанный файл в списке файлов и директорий self.namelist
-        if file_path[1:] in self.namelist:
-            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
-                with zipSystem.open(file_path[1:], "r") as file:
-                    read_file = file.read()
-            print(read_file.decode('UTF-8'))
-
-            return
-
-        print("Error: unknown file")
+                    self.output_text.insert(tk.END, f"{elem}\n")
 
     def remove_directory(self, command):
-        """
-        Удаляет директорию из виртуальной файловой системы.
-        """
-        command = command.strip()
         directory = command.split(' ', 1)[1] if ' ' in command else command
 
-        # Формируем абсолютный путь, если это относительный путь
         if not directory.startswith('/'):
             directory = f"{self.current_directory}/{directory}/"
 
-        # Нормализуем путь (убираем дублирующиеся слэши)
-        directory = directory.replace('//', '/')
-
-        # Проверим путь без завершающего слэша, так как директории могут храниться без него
-        directory = directory.lstrip('/').rstrip('/') + '/'
+        directory = directory.replace('//', '/').lstrip('/').rstrip('/') + '/'
 
         if directory in self.namelist:
             if not any(f.startswith(directory) for f in self.namelist if f != directory):
                 self.namelist.remove(directory)
-                print(f"Directory {directory} removed")
+                self.output_text.insert(tk.END, f"Directory {directory} removed\n")
             else:
-                print(f"Error: Directory {directory} is not empty")
+                self.output_text.insert(tk.END, f"Error: Directory {directory} is not empty\n")
         else:
-            print(f"Error: Directory {directory} does not exist")
+            self.output_text.insert(tk.END, f"Error: Directory {directory} does not exist\n")
 
     def head(self, command):
-        """
-        Вывод первых 10 строк указанного файла в виртуальной файловой системе.
+        file_path = self.normal_split(command)
 
-        - Путь к файлу может быть абсолютным (начинается с '/') или относительным.
-        :param command: Строка команды, которая содержит путь к файлу.
-        """
-        file_path = normal_split(command)
+        if file_path == '0':
+            self.output_text.insert(tk.END, f"Error: incorrect input\n")
+            return
+
+        # Проверяем, является ли путь относительным, если да - добавляем текущую директорию
         if file_path[0] != '/':
-            if self.current_directory != '/':
-                file_path = f'{self.current_directory}/{file_path}'
-            else:
-                file_path = f'/{file_path}'
-        # проверка существует ли файл в списке файлов и директорий в виртуальной файловой системе
+            file_path = f'{self.current_directory}/{file_path}' if self.current_directory != '/' else f'/{file_path}'
+
+        # Проверяем, существует ли файл в архиве
         if file_path[1:] in self.namelist:
-            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:  # открывает zip-архив с файловой системой
-                with zipSystem.open(file_path[1:], "r") as file:
+            with zipfile.ZipFile(self.fileSystem, "r") as zipSystem:
+                with zipSystem.open(file_path[1:]) as file:
                     for i, line in enumerate(file):
                         if i >= 10:
                             break
-                        print(line.decode('UTF-8').strip())
+                        # Выводим только первые 10 строк
+                        self.output_text.insert(tk.END, f"{line.decode('UTF-8').strip()}\n")
         else:
-            print(f"Error: File {file_path} does not exist")
+            self.output_text.insert(tk.END, f"Error: File {file_path} does not exist\n")
 
-def test_cd(vshell):
-    #CD LS
-    print("Current working directory: ")
-    vshell.list_files("ls")
-    print("Change working directory: ")
+    def normal_split(self, line):
+        return '0' if (line.count(' ') == 0) else line[line.rfind(' ') + 1:]
 
-    vshell.change_directory("cd test_filesystem")
-    vshell.list_files("ls")
+    def make_set(self, namelist):
+        return {name.split('/')[0] for name in namelist}
 
-    vshell.change_directory("cd folder")
-    vshell.list_files("ls")
 
-    vshell.change_directory("cd ..")
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Virtual Shell")
+    parser.add_argument("fileSystem", type=str, help="path to the filesystem archive (zip)")
+    parser.add_argument("username", type=str, help="username")
+    return parser.parse_args()
 
-    # HEAD
-    vshell.head("head text.txt")
-    vshell.change_directory("cd ..")
-    vshell.head("head test_filesystem/folder/text2.txt")
-    vshell.head("head text3.txt")
 
-    vshell.change_directory("cd test_filesystem")
+def main():
+    args = parse_arguments()
 
-    # RMDIR
-    vshell.remove_directory("rmdir folder2")
-    vshell.remove_directory("rmdir folder3")
-    vshell.remove_directory("rmdir folder")
+    if args.fileSystem.split('.')[-1] != 'zip':
+        raise ValueError("Filesystem format not supported")
+
+    root = tk.Tk()
+    vshell_gui = VShellGUI(root, args.fileSystem, args.username)
+    root.mainloop()
+
 
 if __name__ == "__main__":
-    # unittest.main()
-    vshell = VShell("test_filesystem.zip")
-    # test_cd(vshell)
-    vshell.run()
+    main()
