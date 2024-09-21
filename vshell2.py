@@ -105,10 +105,10 @@ class VShellGUI:
             if directory[0] != '/':
                 directory = f'{self.current_directory}/{directory}' if self.current_directory != '/' else f'/{directory}'
 
-        if f'{directory[1:]}/' in self.namelist:
-            self.current_directory = directory
-        else:
-            self.output_text.insert(tk.END, f"Error: unknown catalog\n")
+            if f'{directory[1:]}/' in self.namelist:
+                self.current_directory = directory
+            else:
+                self.output_text.insert(tk.END, f"Error: unknown catalog\n")
 
     def print_working_directory(self):
         """
@@ -152,19 +152,23 @@ class VShellGUI:
         """
         directory = command.split(' ', 1)[1] if ' ' in command else command
 
+        # Если путь не абсолютный, добавляем текущую директорию
         if not directory.startswith('/'):
-            directory = f"{self.current_directory}/{directory}/"
+            directory = f"{self.current_directory}/{directory}"
 
-        directory = directory.replace('//', '/').lstrip('/').rstrip('/') + '/'
+        directory = directory.replace('//', '/').lstrip('/').rstrip('/')
 
-        if directory in self.namelist:
-            if not any(f.startswith(directory) for f in self.namelist if f != directory):
-                self.namelist.remove(directory)
-                self.output_text.insert(tk.END, f"Directory {directory} removed\n")
+        # Проверяем, существует ли такой путь в файловой системе
+        if any(d.rstrip('/') == directory for d in self.namelist):
+            if directory.endswith('.txt'):
+                self.output_text.insert(tk.END, f"Error: {directory} is not a directory\n")
+            elif not any(f.startswith(f"{directory}/") for f in self.namelist if f.rstrip('/') != directory):
+                self.namelist = [d for d in self.namelist if d.rstrip('/') != directory]
+                self.output_text.insert(tk.END, f"Directory /{directory} removed\n")
             else:
-                self.output_text.insert(tk.END, f"Error: Directory {directory} is not empty\n")
+                self.output_text.insert(tk.END, f"Error: Directory /{directory} is not empty\n")
         else:
-            self.output_text.insert(tk.END, f"Error: Directory {directory} does not exist\n")
+            self.output_text.insert(tk.END, f"Error: Directory /{directory} does not exist\n")
 
     def head(self, command):
         """
