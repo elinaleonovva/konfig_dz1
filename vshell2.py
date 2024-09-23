@@ -163,6 +163,12 @@ class VShellGUI:
             if directory.endswith('.txt'):
                 self.output_text.insert(tk.END, f"Error: {directory} is not a directory\n")
             elif not any(f.startswith(f"{directory}/") for f in self.namelist if f.rstrip('/') != directory):
+                root_to_parent = directory.split('/')[:-1]
+                name = directory.split('/')[-1]
+                parent = self.namedict
+                for d in root_to_parent:
+                    parent = parent[d]
+                del parent[name]
                 self.namelist = [d for d in self.namelist if d.rstrip('/') != directory]
                 self.output_text.insert(tk.END, f"Directory /{directory} removed\n")
             else:
